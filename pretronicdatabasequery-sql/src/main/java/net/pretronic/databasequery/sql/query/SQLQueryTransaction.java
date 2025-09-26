@@ -24,6 +24,8 @@ import net.pretronic.databasequery.api.query.Query;
 import net.pretronic.databasequery.api.query.QueryGroup;
 import net.pretronic.databasequery.api.query.QueryTransaction;
 import net.pretronic.databasequery.api.query.result.QueryResult;
+import net.pretronic.databasequery.api.query.result.QueryResultEntry;
+import net.pretronic.databasequery.common.query.AbstractQueryGroup;
 import net.pretronic.databasequery.common.query.result.DefaultQueryResult;
 import net.pretronic.databasequery.common.query.result.DefaultQueryResultEntry;
 import net.pretronic.databasequery.sql.SQLDatabase;
@@ -78,11 +80,32 @@ public class SQLQueryTransaction implements QueryTransaction {
 
     @Override
     public QueryResult execute(QueryGroup queryGroup, Object... values) {
-        return null;
+        if(!(queryGroup instanceof SQLQueryGroup)) {
+            throw new IllegalArgumentException("Can't execute non sql query group in SQL transaction");
+        }
+
+        DefaultQueryResult result = new DefaultQueryResult();
+        SQLQueryGroup sqlQueryGroup = (SQLQueryGroup) queryGroup;
+        for (AbstractQueryGroup.Entry entry : sqlQueryGroup.entries) {
+            QueryResult queryResult = execute(entry.query, entry.values);
+            mergeResult(result, queryResult);
+        }
+        return result;
     }
 
     @Override
     public QueryResult execute(Consumer<QueryGroup> queryGroupConsumer, Object... values) {
-        return null;
+        SQLQueryGroup queryGroup = new SQLQueryGroup(this.database);
+        queryGroupConsumer.accept(queryGroup);
+        return execute(queryGroup, values);
+    }
+
+    private void mergeResult(DefaultQueryResult target, QueryResult source) {
+        if(source == null) return;
+
+        source.getProperties().forEach((key, value) -> target.getProperties().put(key, value));
+        for (QueryResultEntry entry : source.asList()) {
+            target.addEntry(entry);
+        }
     }
 }

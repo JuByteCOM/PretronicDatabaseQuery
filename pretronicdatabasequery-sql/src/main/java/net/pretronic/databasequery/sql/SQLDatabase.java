@@ -33,6 +33,8 @@ import net.pretronic.databasequery.api.query.type.CreateQuery;
 import net.pretronic.databasequery.api.query.type.FindQuery;
 import net.pretronic.databasequery.common.AbstractDatabase;
 import net.pretronic.databasequery.common.DatabaseDriverEnvironment;
+import net.pretronic.databasequery.common.query.result.DefaultQueryResult;
+import net.pretronic.databasequery.api.query.result.QueryResultEntry;
 import net.pretronic.databasequery.sql.collection.SQLDatabaseCollection;
 import net.pretronic.databasequery.sql.collection.SQLInnerQueryDatabaseCollection;
 import net.pretronic.databasequery.sql.driver.SQLDatabaseDriver;
@@ -99,7 +101,24 @@ public class SQLDatabase extends AbstractDatabase<SQLDatabaseDriver> {
 
     @Override
     public QueryResult execute(Query... queries) {
-        return null;
+        DefaultQueryResult result = new DefaultQueryResult();
+        if(queries == null || queries.length == 0) {
+            return result;
+        }
+
+        for (Query query : queries) {
+            if(query == null) continue;
+
+            QueryResult queryResult;
+            if(query instanceof CommitOnExecute) {
+                queryResult = ((CommitOnExecute) query).execute(true, Query.EMPTY_OBJECT_ARRAY);
+            } else {
+                queryResult = query.execute(Query.EMPTY_OBJECT_ARRAY);
+            }
+
+            mergeResult(result, queryResult);
+        }
+        return result;
     }
 
     public boolean isLocalConnected() {
@@ -195,5 +214,14 @@ public class SQLDatabase extends AbstractDatabase<SQLDatabaseDriver> {
     public void handleDatabaseQueryExecuteFailedException(SQLException exception, String query) {
         throw new DatabaseQueryExecuteFailedException(String.format("%s - Error executing sql query: %s", getDriver().getName(), query)
                 , exception);
+    }
+
+    private void mergeResult(DefaultQueryResult target, QueryResult source) {
+        if(source == null) return;
+
+        source.getProperties().forEach((key, value) -> target.getProperties().put(key, value));
+        for (QueryResultEntry entry : source.asList()) {
+            target.addEntry(entry);
+        }
     }
 }

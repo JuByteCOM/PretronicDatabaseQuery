@@ -204,7 +204,15 @@ public class DefaultQueryResultEntry implements QueryResultEntry {
 
     @Override
     public boolean contains(String key) {
-        return getObject(key) != null;
+        if(this.results.containsKey(key)) return true;
+
+        for (Map.Entry<String, Object> entry : this.results.entrySet()) {
+            String[] split = entry.getKey().split("\\.");
+            if(split[split.length-1].equalsIgnoreCase(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
