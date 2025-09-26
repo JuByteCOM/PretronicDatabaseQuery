@@ -157,8 +157,8 @@ public abstract class AbstractDatabaseCollection<T extends Database> implements 
      * Developer Note: Override {@link #addFieldInternal(String, DataType, int, Object, ForeignKey, FieldOption[])}
      * in database specific implementations to handle the actual field creation.
      */
-    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue,
-                                               ForeignKey foreignKey, FieldOption[] options) {
+    public CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue,
+                                            ForeignKey foreignKey, FieldOption[] options) {
         throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
     }
 
