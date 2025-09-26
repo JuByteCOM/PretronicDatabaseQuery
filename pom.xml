@@ -30,7 +30,7 @@
 
         <dependency.hikaricp.version>4.0.3</dependency.hikaricp.version>
         <dependency.mongodb.version>3.12.14</dependency.mongodb.version>
-        <dependency.h2.version>2.1.214</dependency.h2.version>
+        <dependency.h2.version>1.4.200</dependency.h2.version>
         <dependency.mysql.version>8.3.0</dependency.mysql.version>
         <dependency.mariadb.version>3.3.3</dependency.mariadb.version>
         <dependency.postgresql.version>42.7.2</dependency.postgresql.version>
