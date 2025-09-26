@@ -24,17 +24,21 @@ import net.pretronic.databasequery.api.collection.DatabaseCollectionType;
 import net.pretronic.databasequery.api.collection.field.CollectionField;
 import net.pretronic.databasequery.api.collection.field.FieldOption;
 import net.pretronic.databasequery.api.datatype.DataType;
-import net.pretronic.databasequery.api.query.ForeignKey;
 import net.pretronic.databasequery.api.query.Aggregation;
+import net.pretronic.databasequery.api.query.ForeignKey;
 import net.pretronic.databasequery.api.query.QueryGroup;
 import net.pretronic.databasequery.api.query.QueryTransaction;
 import net.pretronic.databasequery.api.query.type.*;
 import net.pretronic.databasequery.common.collection.AbstractDatabaseCollection;
 import net.pretronic.databasequery.sql.SQLDatabase;
+import net.pretronic.databasequery.sql.collection.field.SQLCollectionField;
+import net.pretronic.databasequery.sql.dialect.context.AlterQueryContext;
 import net.pretronic.databasequery.sql.query.SQLQueryGroup;
 import net.pretronic.databasequery.sql.query.SQLQueryTransaction;
 import net.pretronic.databasequery.sql.query.type.*;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Collection;
 
 public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabase> {
@@ -113,7 +117,30 @@ public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabas
     @Override
     protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
                                                FieldOption[] options) {
-        throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
+        if(type == null) {
+            throw new IllegalArgumentException("Field type must not be null");
+        }
+
+        FieldOption[] effectiveOptions = options != null ? options : new FieldOption[0];
+
+        AlterQueryContext context = getDatabase().getDriver().getDialect()
+                .newAddFieldQuery(this, name, type, size, defaultValue, foreignKey, effectiveOptions);
+
+        getDatabase().executeUpdateQuery(context.getQueryBuilder().toString(), true, preparedStatement -> {
+            applyPreparedValues(preparedStatement, context);
+        });
+
+        for (String additionalQuery : context.getAdditionalExecutedQueries()) {
+            getDatabase().executeUpdateQuery(additionalQuery, true);
+        }
+
+        return new SQLCollectionField(this, name, type, size, defaultValue, foreignKey, effectiveOptions);
+    }
+
+    private void applyPreparedValues(PreparedStatement preparedStatement, AlterQueryContext context) throws SQLException {
+        for (int i = 0; i < context.getPreparedValues().size(); i++) {
+            preparedStatement.setObject(i + 1, context.getPreparedValues().get(i));
+        }
     }
 
     @Override

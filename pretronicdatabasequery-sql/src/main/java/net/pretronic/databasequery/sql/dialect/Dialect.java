@@ -20,13 +20,16 @@
 package net.pretronic.databasequery.sql.dialect;
 
 import net.pretronic.databasequery.api.collection.DatabaseCollectionType;
+import net.pretronic.databasequery.api.collection.field.FieldOption;
 import net.pretronic.databasequery.api.datatype.DataType;
+import net.pretronic.databasequery.api.query.ForeignKey;
 import net.pretronic.databasequery.api.query.type.FindQuery;
 import net.pretronic.databasequery.common.DatabaseDriverEnvironment;
 import net.pretronic.databasequery.common.query.type.*;
 import net.pretronic.databasequery.sql.DataTypeInformation;
 import net.pretronic.databasequery.sql.SQLDatabase;
 import net.pretronic.databasequery.sql.collection.SQLDatabaseCollection;
+import net.pretronic.databasequery.sql.dialect.context.AlterQueryContext;
 import net.pretronic.databasequery.sql.dialect.context.CreateQueryContext;
 import net.pretronic.databasequery.sql.dialect.defaults.mssql.MsSQLDialect;
 import net.pretronic.databasequery.sql.dialect.defaults.mysql.H2PortableDialect;
@@ -72,6 +75,9 @@ public interface Dialect extends ConnectionStringCreator {
 
 
     CreateQueryContext newCreateQuery(SQLDatabase database, List<AbstractCreateQuery.Entry> entries, String name, String engine, DatabaseCollectionType collectionType, FindQuery includingQuery, boolean ifNotExists, Object[] values);
+
+    AlterQueryContext newAddFieldQuery(SQLDatabaseCollection collection, String fieldName, DataType type, int size,
+                                       Object defaultValue, ForeignKey foreignKey, FieldOption[] options);
 
     Pair<String, List<Object>> newDeleteQuery(SQLDatabaseCollection collection, List<AbstractDeleteQuery.Entry> entries, Object[] values);
 
