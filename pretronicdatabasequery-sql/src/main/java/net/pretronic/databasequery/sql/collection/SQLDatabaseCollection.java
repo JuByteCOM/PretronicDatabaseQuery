@@ -115,8 +115,8 @@ public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabas
     }
 
     @Override
-    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
-                                               FieldOption[] options) {
+    public CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
+                                            FieldOption[] options) {
         if(type == null) {
             throw new IllegalArgumentException("Field type must not be null");
         }
