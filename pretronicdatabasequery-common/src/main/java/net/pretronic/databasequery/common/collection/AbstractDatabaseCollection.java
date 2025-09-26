@@ -23,9 +23,15 @@ import net.pretronic.databasequery.api.Database;
 import net.pretronic.databasequery.api.collection.DatabaseCollection;
 import net.pretronic.databasequery.api.collection.DatabaseCollectionType;
 import net.pretronic.databasequery.api.collection.field.CollectionField;
+import net.pretronic.databasequery.api.collection.field.FieldBuilder;
+import net.pretronic.databasequery.api.collection.field.FieldOption;
+import net.pretronic.databasequery.api.datatype.DataType;
+import net.pretronic.databasequery.api.query.ForeignKey;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * The {@link AbstractDatabaseCollection} represents the default implementation of {@link DatabaseCollection}.
@@ -105,6 +111,105 @@ public abstract class AbstractDatabaseCollection<T extends Database> implements 
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         this.database.getDriver().getExecutorService().execute(()-> future.complete(hasField(name)));
         return future;
+    }
+
+    @Override
+    public CollectionField addField(String name) {
+        return addField(name, null, 0, null, null, new FieldOption[0]);
+    }
+
+    @Override
+    public CollectionField addField(String name, DataType type, FieldOption... options) {
+        return addField(name, type, 0, null, null, options);
+    }
+
+    @Override
+    public CollectionField addField(String name, DataType type, int size, FieldOption... options) {
+        return addField(name, type, size, null, null, options);
+    }
+
+    @Override
+    public CollectionField addField(String name, DataType type, int size, Object defaultValue, FieldOption... options) {
+        return addField(name, type, size, defaultValue, null, options);
+    }
+
+    @Override
+    public CollectionField addField(String name, DataType type, ForeignKey foreignKey, FieldOption... options) {
+        return addField(name, type, 0, null, foreignKey, options);
+    }
+
+    @Override
+    public CollectionField addField(Consumer<FieldBuilder> builder) {
+        SimpleFieldBuilder fieldBuilder = new SimpleFieldBuilder();
+        builder.accept(fieldBuilder);
+        Objects.requireNonNull(fieldBuilder.name, "Field name must not be null");
+        Objects.requireNonNull(fieldBuilder.type, "Field type must not be null");
+        FieldOption[] options = fieldBuilder.options != null ? fieldBuilder.options : new FieldOption[0];
+        return addField(fieldBuilder.name,
+                fieldBuilder.type,
+                fieldBuilder.size,
+                fieldBuilder.defaultValue,
+                fieldBuilder.foreignKey,
+                options);
+    }
+
+    /**
+     * Developer Note: Override {@link #addFieldInternal(String, DataType, int, Object, ForeignKey, FieldOption[])}
+     * in database specific implementations to handle the actual field creation.
+     */
+    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey, FieldOption[] options) {
+        throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
+    }
+
+    @Override
+    public CollectionField addField(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey, FieldOption... options) {
+        return addFieldInternal(name, type, size, defaultValue, foreignKey, options);
+    }
+
+    private static final class SimpleFieldBuilder implements FieldBuilder {
+
+        private String name;
+        private DataType type;
+        private int size = 0;
+        private Object defaultValue;
+        private ForeignKey foreignKey;
+        private FieldOption[] options;
+
+        @Override
+        public FieldBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        @Override
+        public FieldBuilder type(DataType type) {
+            this.type = type;
+            return this;
+        }
+
+        @Override
+        public FieldBuilder size(int size) {
+            this.size = size;
+            return this;
+        }
+
+        @Override
+        public FieldBuilder defaultValue(Object value) {
+            this.defaultValue = value;
+            return this;
+        }
+
+        @Override
+        public FieldBuilder foreignKey(ForeignKey foreignKey) {
+            this.foreignKey = foreignKey;
+            return this;
+        }
+
+        @Override
+        public FieldBuilder options(FieldOption... options) {
+            this.options = options;
+            return this;
+        }
     }
 
     @Override
