@@ -64,9 +64,25 @@ public enum DataType {
     }
 
     public static DataType getDataTypeByClass(Class<?> clazz) {
+        if(clazz == null) return null;
+
         for (DataType dataType : DataType.values()) {
             for (Class<?> javaClass : dataType.getJavaClasses()) {
-                if(clazz == javaClass) return dataType;
+                if(javaClass == null) continue;
+
+                if(javaClass.equals(clazz)) return dataType;
+
+                if(javaClass.isAssignableFrom(clazz) || clazz.isAssignableFrom(javaClass)) {
+                    return dataType;
+                }
+
+                if(javaClass.isPrimitive()) {
+                    Class<?> wrapper = net.pretronic.libraries.utility.reflect.Primitives.getWrapper(javaClass);
+                    if(wrapper != null && wrapper.equals(clazz)) return dataType;
+                } else if(clazz.isPrimitive()) {
+                    Class<?> wrapper = net.pretronic.libraries.utility.reflect.Primitives.getWrapper(clazz);
+                    if(wrapper != null && wrapper.equals(javaClass)) return dataType;
+                }
             }
         }
         return null;

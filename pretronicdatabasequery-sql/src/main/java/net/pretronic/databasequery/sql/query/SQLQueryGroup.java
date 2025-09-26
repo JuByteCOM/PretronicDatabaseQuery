@@ -19,9 +19,13 @@
 
 package net.pretronic.databasequery.sql.query;
 
+import net.pretronic.databasequery.api.query.Query;
 import net.pretronic.databasequery.api.query.result.QueryResult;
+import net.pretronic.databasequery.api.query.result.QueryResultEntry;
 import net.pretronic.databasequery.common.query.AbstractQueryGroup;
+import net.pretronic.databasequery.common.query.result.DefaultQueryResult;
 import net.pretronic.databasequery.sql.SQLDatabase;
+import net.pretronic.databasequery.sql.query.CommitOnExecute;
 
 public class SQLQueryGroup extends AbstractQueryGroup {
 
@@ -33,6 +37,29 @@ public class SQLQueryGroup extends AbstractQueryGroup {
 
     @Override
     public QueryResult execute() {
-        return null;
+        DefaultQueryResult result = new DefaultQueryResult();
+        for (Entry entry : this.entries) {
+            if(entry == null || entry.query == null) continue;
+
+            Query query = entry.query;
+            Object[] values = entry.values != null ? entry.values : Query.EMPTY_OBJECT_ARRAY;
+
+            QueryResult queryResult;
+            if(query instanceof CommitOnExecute) {
+                queryResult = ((CommitOnExecute) query).execute(true, values);
+            } else {
+                queryResult = query.execute(values);
+            }
+
+            if(queryResult == null) {
+                continue;
+            }
+
+            queryResult.getProperties().forEach((key, value) -> result.getProperties().put(key, value));
+            for (QueryResultEntry resultEntry : queryResult.asList()) {
+                result.addEntry(resultEntry);
+            }
+        }
+        return result;
     }
 }
