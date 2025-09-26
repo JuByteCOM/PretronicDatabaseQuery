@@ -24,6 +24,9 @@ import com.mongodb.client.MongoCollection;
 import net.pretronic.databasequery.api.collection.AliasDatabaseCollection;
 import net.pretronic.databasequery.api.collection.DatabaseCollectionType;
 import net.pretronic.databasequery.api.collection.field.CollectionField;
+import net.pretronic.databasequery.api.collection.field.FieldOption;
+import net.pretronic.databasequery.api.datatype.DataType;
+import net.pretronic.databasequery.api.query.ForeignKey;
 import net.pretronic.databasequery.api.query.QueryGroup;
 import net.pretronic.databasequery.api.query.QueryTransaction;
 import net.pretronic.databasequery.api.query.type.*;
@@ -80,42 +83,43 @@ public class MongoDBDatabaseCollection extends AbstractDatabaseCollection<MongoD
 
     @Override
     public void clear() {
-
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public QueryTransaction transact() {
-        return null;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public QueryGroup group() {
-        return null;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public Collection<CollectionField> getFields() {
-        return null;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public CollectionField getField(String name) {
-        return null;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public boolean hasField(String name) {
-        return false;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
-    public CollectionField addField(String name) {
-        return null;
+    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
+                                               FieldOption[] options) {
+        throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
     }
 
     @Override
     public AliasDatabaseCollection as(String alias) {
-        return null;
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     public MongoCollection<Document> getCollection() {

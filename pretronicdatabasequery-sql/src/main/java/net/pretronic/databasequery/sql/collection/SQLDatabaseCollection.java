@@ -22,6 +22,9 @@ package net.pretronic.databasequery.sql.collection;
 import net.pretronic.databasequery.api.collection.AliasDatabaseCollection;
 import net.pretronic.databasequery.api.collection.DatabaseCollectionType;
 import net.pretronic.databasequery.api.collection.field.CollectionField;
+import net.pretronic.databasequery.api.collection.field.FieldOption;
+import net.pretronic.databasequery.api.datatype.DataType;
+import net.pretronic.databasequery.api.query.ForeignKey;
 import net.pretronic.databasequery.api.query.Aggregation;
 import net.pretronic.databasequery.api.query.QueryGroup;
 import net.pretronic.databasequery.api.query.QueryTransaction;
@@ -108,8 +111,9 @@ public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabas
     }
 
     @Override
-    public CollectionField addField(String name) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
+                                               FieldOption[] options) {
+        throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
     }
 
     @Override
