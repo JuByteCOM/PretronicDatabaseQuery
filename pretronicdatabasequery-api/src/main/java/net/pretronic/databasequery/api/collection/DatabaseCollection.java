@@ -57,6 +57,7 @@ public interface DatabaseCollection {
      */
     DatabaseCollectionType getType();
 
+
     /**
      * Returns the size of data in this {@link DatabaseCollection}.
      *

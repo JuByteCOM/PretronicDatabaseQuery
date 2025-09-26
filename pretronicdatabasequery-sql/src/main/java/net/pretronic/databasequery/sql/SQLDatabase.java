@@ -35,6 +35,7 @@ import net.pretronic.databasequery.common.AbstractDatabase;
 import net.pretronic.databasequery.common.DatabaseDriverEnvironment;
 import net.pretronic.databasequery.sql.collection.SQLDatabaseCollection;
 import net.pretronic.databasequery.sql.collection.SQLInnerQueryDatabaseCollection;
+import net.pretronic.databasequery.sql.dialect.Dialect;
 import net.pretronic.databasequery.sql.driver.SQLDatabaseDriver;
 import net.pretronic.databasequery.sql.query.SQLQueryGroup;
 import net.pretronic.databasequery.sql.query.SQLQueryTransaction;
@@ -46,6 +47,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class SQLDatabase extends AbstractDatabase<SQLDatabaseDriver> {
@@ -145,6 +147,8 @@ public class SQLDatabase extends AbstractDatabase<SQLDatabaseDriver> {
     @Internal
     public Number[] executeUpdateQuery(String query, boolean commit, PreparedStatementConsumer preparedStatementConsumer, String[] keyColumns, Consumer<SQLException> exceptionConsumer) {
         try(Connection connection = this.dataSource.getConnection()) {
+            if(Objects.equals(this.getDriver().getType(), Dialect.H2_PORTABLE.getName()))
+                connection.setSchema("PUBLIC");
             try(PreparedStatement preparedStatement = setPrepareStatement(connection, query, keyColumns)) {
                 preparedStatementConsumer.accept(preparedStatement);
                 int affectedRows = preparedStatement.executeUpdate();

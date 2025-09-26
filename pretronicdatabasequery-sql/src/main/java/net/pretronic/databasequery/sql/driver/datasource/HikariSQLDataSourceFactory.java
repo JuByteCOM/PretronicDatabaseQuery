@@ -80,6 +80,8 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
         if(config.getDataSourceMinimumIdleConnectionPoolSize() != 0) hikariConfig.setMinimumIdle(config.getDataSourceMinimumIdleConnectionPoolSize());
 
         if(config.getConnectionIsolationLevel() != 0) hikariConfig.setTransactionIsolation(convertToHikariIsolationLevel(config.getConnectionIsolationLevel()));
+        hikariConfig.addDataSourceProperty("dataSourceProperties", "transactionIsolation=READ_COMMITTED");
+
         return new HikariDataSource(hikariConfig);
     }
 

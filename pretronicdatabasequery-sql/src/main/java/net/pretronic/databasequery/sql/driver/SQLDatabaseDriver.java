@@ -32,7 +32,6 @@ import net.pretronic.databasequery.sql.dialect.Dialect;
 import net.pretronic.databasequery.sql.dialect.DialectDocumentAdapter;
 import net.pretronic.databasequery.sql.driver.config.SQLDatabaseDriverConfig;
 import net.pretronic.databasequery.sql.driver.datasource.HikariSQLDataSourceFactory;
-import net.pretronic.databasequery.sql.driver.datasource.PCPSQLDataSourceFactory;
 import net.pretronic.databasequery.sql.driver.datasource.SQLDataSourceFactory;
 import net.pretronic.libraries.document.DocumentRegistry;
 import net.pretronic.libraries.logging.PretronicLogger;
@@ -51,7 +50,6 @@ public class SQLDatabaseDriver extends AbstractDatabaseDriver {
     static {
         DocumentRegistry.getDefaultContext().registerHierarchyAdapter(Dialect.class, new DialectDocumentAdapter());
         SQLDataSourceFactory.registerFactory("com.zaxxer.hikari.HikariDataSource", new HikariSQLDataSourceFactory());
-        SQLDataSourceFactory.registerFactory("net.pretronic.sqlconnectionpool.PretronicDataSource", new PCPSQLDataSourceFactory());
         DatabaseDriverFactory.registerFactory(SQLDatabaseDriver.class, new SQLDatabaseDriverFactory());
     }
 
