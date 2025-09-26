@@ -29,6 +29,7 @@ import net.pretronic.libraries.utility.map.Triple;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * The {@link AbstractFindQuery} represents the base implementation of{@link FindQuery}. It only holds the query logic in form of entries.
@@ -37,6 +38,8 @@ import java.util.List;
 public abstract class AbstractFindQuery<C extends DatabaseCollection> extends AbstractSearchQuery<FindQuery, C> implements FindQuery {
 
     protected final List<Entry> getEntries;
+
+    private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[A-Za-z0-9_]+$");
 
     public AbstractFindQuery(C collection) {
         super(collection);
@@ -67,6 +70,7 @@ public abstract class AbstractFindQuery<C extends DatabaseCollection> extends Ab
     @Override
     public FindQuery getAs(String field, String alias) {
         Validate.notNull(field, alias);
+        validateAlias(alias);
         Triple<String, String, String> assignment = getAssignment(field);
         this.getEntries.add(new GetEntry(assignment.getFirst(), assignment.getSecond(), assignment.getThird(), null, alias));
         return this;
@@ -77,6 +81,7 @@ public abstract class AbstractFindQuery<C extends DatabaseCollection> extends Ab
         Validate.notNull(collection);
         Validate.notNull(field);
         Validate.notNull(alias);
+        validateAlias(alias);
         this.getEntries.add(new GetEntry(null, collection, field, null, alias));
         return this;
     }
@@ -101,6 +106,7 @@ public abstract class AbstractFindQuery<C extends DatabaseCollection> extends Ab
         Validate.notNull(aggregation);
         Validate.notNull(field);
         Validate.notNull(alias);
+        validateAlias(alias);
         Triple<String, String, String> assignment = getAssignment(field);
         this.getEntries.add(new GetEntry(assignment.getFirst(), assignment.getSecond(), assignment.getThird(), aggregation, alias));
         return this;
@@ -112,6 +118,7 @@ public abstract class AbstractFindQuery<C extends DatabaseCollection> extends Ab
         Validate.notNull(collection);
         Validate.notNull(field);
         Validate.notNull(alias);
+        validateAlias(alias);
         this.getEntries.add(new GetEntry(null, collection, field, aggregation, alias));
         return this;
     }
@@ -119,8 +126,15 @@ public abstract class AbstractFindQuery<C extends DatabaseCollection> extends Ab
     @Override
     public FindQuery getFunction(QueryFunction function, String getAliasName) {
         Validate.notNull(function, (Object) getAliasName);
+        validateAlias(getAliasName);
         this.getEntries.add(new FunctionEntry(function, getAliasName));
         return this;
+    }
+
+    private void validateAlias(String alias) {
+        if(alias.isEmpty() || !SAFE_IDENTIFIER.matcher(alias).matches()) {
+            throw new IllegalArgumentException("Alias contains illegal characters");
+        }
     }
 
     @Override
