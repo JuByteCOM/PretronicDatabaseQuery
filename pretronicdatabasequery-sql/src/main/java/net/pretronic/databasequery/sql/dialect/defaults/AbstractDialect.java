@@ -39,6 +39,7 @@ import net.pretronic.databasequery.sql.collection.SQLDatabaseCollection;
 import net.pretronic.databasequery.sql.collection.SQLInnerQueryDatabaseCollection;
 import net.pretronic.databasequery.sql.dialect.Dialect;
 import net.pretronic.databasequery.sql.dialect.DialectDefaultSettings;
+import net.pretronic.databasequery.sql.dialect.context.AlterQueryContext;
 import net.pretronic.databasequery.sql.dialect.context.CreateQueryContext;
 import net.pretronic.databasequery.sql.driver.SQLDatabaseDriver;
 import net.pretronic.databasequery.sql.query.type.SQLFindQuery;
@@ -148,6 +149,14 @@ public abstract class AbstractDialect implements Dialect {
     public CreateQueryContext newCreateQuery(SQLDatabase database, List<AbstractCreateQuery.Entry> entries, String name, String engine, DatabaseCollectionType collectionType, FindQuery includingQuery, boolean ifNotExists, Object[] values) {
         CreateQueryContext context = new CreateQueryContext(database, name);
         newCreateQuery(context, database, entries, name, engine, collectionType, includingQuery, ifNotExists, values);
+        return context;
+    }
+
+    @Override
+    public AlterQueryContext newAddFieldQuery(SQLDatabaseCollection collection, String fieldName, DataType type, int size,
+                                              Object defaultValue, ForeignKey foreignKey, FieldOption[] options) {
+        AlterQueryContext context = new AlterQueryContext(collection);
+        buildAddFieldQuery(context, fieldName, type, size, defaultValue, foreignKey, options);
         return context;
     }
 
@@ -264,6 +273,103 @@ public abstract class AbstractDialect implements Dialect {
         if(entry.getForeignKey().getUpdateOption() != null && entry.getForeignKey().getUpdateOption() != ForeignKey.Option.DEFAULT) {
             context.getQueryBuilder().append(" ON UPDATE ").append(entry.getForeignKey().getDeleteOption().toString().replace("_", " "));
         }
+    }
+
+    protected void buildAddFieldQuery(AlterQueryContext context, String fieldName, DataType type, int size, Object defaultValue,
+                                      ForeignKey foreignKey, FieldOption[] options) {
+        SQLDatabaseCollection collection = context.getCollection();
+        StringBuilder builder = context.getQueryBuilder();
+
+        builder.append("ALTER TABLE ");
+        appendCollectionReference(builder, collection);
+        builder.append(" ADD COLUMN ").append(firstBackTick).append(fieldName).append(secondBackTick).append(" ");
+
+        DataTypeInformation dataTypeInformation = getDataTypeInformation(type);
+        builder.append(dataTypeInformation.getName());
+        if(dataTypeInformation.isSizeAble()) {
+            int effectiveSize = size > 0 ? size : dataTypeInformation.getDefaultSize();
+            if(effectiveSize > 0) {
+                builder.append("(").append(effectiveSize).append(")");
+            }
+        }
+
+        if(defaultValue != null) {
+            builder.append(" DEFAULT ?");
+            context.getPreparedValues().add(defaultValue);
+        }
+
+        if(options != null && options.length > 0) {
+            for (FieldOption option : options) {
+                switch (option) {
+                    case INDEX:
+                        context.getAdditionalExecutedQueries().add(buildCreateIndexQuery(collection, fieldName, false));
+                        break;
+                    case UNIQUE_INDEX:
+                        context.getAdditionalExecutedQueries().add(buildCreateIndexQuery(collection, fieldName, true));
+                        break;
+                    case PRIMARY_KEY:
+                        builder.append(" PRIMARY KEY");
+                        break;
+                    case NOT_NULL:
+                        builder.append(" NOT NULL");
+                        break;
+                    default:
+                        builder.append(" ").append(option.toString());
+                        break;
+                }
+            }
+        }
+
+        builder.append(";");
+
+        if(foreignKey != null) {
+            context.getAdditionalExecutedQueries().add(buildAddForeignKeyQuery(collection, fieldName, foreignKey));
+        }
+    }
+
+    protected void appendCollectionReference(StringBuilder builder, SQLDatabaseCollection collection) {
+        builder.append(firstBackTick);
+        if(this.environment == DatabaseDriverEnvironment.REMOTE) {
+            builder.append(collection.getDatabase().getName()).append(secondBackTick).append(".").append(firstBackTick);
+        }
+        builder.append(collection.getName()).append(secondBackTick);
+    }
+
+    protected String buildCreateIndexQuery(SQLDatabaseCollection collection, String field, boolean unique) {
+        StringBuilder queryBuilder = new StringBuilder("CREATE ");
+        if(unique) {
+            queryBuilder.append("UNIQUE ");
+        }
+        queryBuilder.append("INDEX ");
+        String indexName = collection.getDatabase().getName() + collection.getName() + field;
+        if(indexName.length() > 64) {
+            indexName = indexName.substring(0, 64);
+        }
+        queryBuilder.append(firstBackTick).append(indexName).append(secondBackTick).append(" ON ");
+        appendCollectionReference(queryBuilder, collection);
+        queryBuilder.append(" (").append(firstBackTick).append(field).append(secondBackTick).append(");");
+        return queryBuilder.toString();
+    }
+
+    protected String buildAddForeignKeyQuery(SQLDatabaseCollection collection, String field, ForeignKey foreignKey) {
+        StringBuilder builder = new StringBuilder("ALTER TABLE ");
+        appendCollectionReference(builder, collection);
+        builder.append(" ADD CONSTRAINT ").append(firstBackTick).append(UUID.randomUUID().toString()).append(secondBackTick)
+                .append(" FOREIGN KEY (").append(firstBackTick).append(field).append(secondBackTick).append(") REFERENCES ");
+        builder.append(firstBackTick);
+        if(this.environment == DatabaseDriverEnvironment.REMOTE) {
+            builder.append(collection.getDatabase().getName()).append(secondBackTick).append(".").append(firstBackTick);
+        }
+        builder.append(foreignKey.getCollection()).append(secondBackTick).append("(").append(firstBackTick)
+                .append(foreignKey.getField()).append(secondBackTick).append(")");
+        if(foreignKey.getDeleteOption() != null && foreignKey.getDeleteOption() != ForeignKey.Option.DEFAULT) {
+            builder.append(" ON DELETE ").append(foreignKey.getDeleteOption().toString().replace("_", " "));
+        }
+        if(foreignKey.getUpdateOption() != null && foreignKey.getUpdateOption() != ForeignKey.Option.DEFAULT) {
+            builder.append(" ON UPDATE ").append(foreignKey.getUpdateOption().toString().replace("_", " "));
+        }
+        builder.append(";");
+        return builder.toString();
     }
 
 
