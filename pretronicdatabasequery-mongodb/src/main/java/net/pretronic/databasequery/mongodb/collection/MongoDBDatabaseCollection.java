@@ -112,8 +112,8 @@ public class MongoDBDatabaseCollection extends AbstractDatabaseCollection<MongoD
     }
 
     @Override
-    protected CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
-                                               FieldOption[] options) {
+    public CollectionField addFieldInternal(String name, DataType type, int size, Object defaultValue, ForeignKey foreignKey,
+                                            FieldOption[] options) {
         throw new UnsupportedOperationException("Adding fields is not supported for this collection type.");
     }
 
