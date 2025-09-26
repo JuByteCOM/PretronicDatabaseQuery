@@ -22,14 +22,58 @@ package net.pretronic.databasequery.api.query.function;
 
 import net.pretronic.databasequery.api.query.SearchOrder;
 
+import java.util.Objects;
+import java.util.regex.Pattern;
+
 public class RowNumberQueryFunction implements QueryFunction {
+
+    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("^[A-Za-z0-9_]+$");
 
     private final String orderField;
     private final SearchOrder order;
+    private final String orderDatabase;
+    private final String orderDatabaseCollection;
+    private final String orderFieldName;
 
     protected RowNumberQueryFunction(String orderField, SearchOrder order) {
-        this.orderField = orderField;
-        this.order = order;
+        this.orderField = Objects.requireNonNull(orderField, "orderField").trim();
+        if(this.orderField.isEmpty()) {
+            throw new IllegalArgumentException("orderField may not be empty");
+        }
+        this.order = Objects.requireNonNull(order, "order");
+
+        String[] segments = this.orderField.split("\\.");
+        if(segments.length == 0 || segments.length > 3) {
+            throw new IllegalArgumentException("Invalid order field path '" + orderField + "'");
+        }
+
+        switch (segments.length) {
+            case 3:
+                this.orderDatabase = validateIdentifier(segments[0], "database");
+                this.orderDatabaseCollection = validateIdentifier(segments[1], "collection");
+                this.orderFieldName = validateIdentifier(segments[2], "field");
+                break;
+            case 2:
+                this.orderDatabase = null;
+                this.orderDatabaseCollection = validateIdentifier(segments[0], "collection");
+                this.orderFieldName = validateIdentifier(segments[1], "field");
+                break;
+            case 1:
+                this.orderDatabase = null;
+                this.orderDatabaseCollection = null;
+                this.orderFieldName = validateIdentifier(segments[0], "field");
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid order field path '" + orderField + "'");
+        }
+    }
+
+    private String validateIdentifier(String value, String type) {
+        String trimmed = value.trim();
+        if(trimmed.isEmpty() || !IDENTIFIER_PATTERN.matcher(trimmed).matches()) {
+            throw new IllegalArgumentException(String.format("Invalid %s identifier '%s'", type, value));
+        }
+        return trimmed;
     }
 
     public String getOrderField() {
@@ -38,6 +82,18 @@ public class RowNumberQueryFunction implements QueryFunction {
 
     public SearchOrder getOrder() {
         return order;
+    }
+
+    public String getOrderDatabase() {
+        return orderDatabase;
+    }
+
+    public String getOrderDatabaseCollection() {
+        return orderDatabaseCollection;
+    }
+
+    public String getOrderFieldName() {
+        return orderFieldName;
     }
 
     @Override

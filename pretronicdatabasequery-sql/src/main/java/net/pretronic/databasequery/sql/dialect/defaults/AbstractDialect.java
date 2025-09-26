@@ -430,8 +430,9 @@ public abstract class AbstractDialect implements Dialect {
         }
         if(entry.getFunction() instanceof RowNumberQueryFunction) {
             RowNumberQueryFunction function = ((RowNumberQueryFunction) entry.getFunction());
+            String orderField = buildField(function.getOrderDatabase(), function.getOrderDatabaseCollection(), function.getOrderFieldName());
             state.getBuilder.append("ROW_NUMBER() over (ORDER BY ")
-                    .append(function.getOrderField()).append(" ")
+                    .append(firstBackTick).append(orderField).append(secondBackTick).append(" ")
                     .append(function.getOrder().toString())
                     .append(") AS ").append(entry.getGetAliasName());
         }
