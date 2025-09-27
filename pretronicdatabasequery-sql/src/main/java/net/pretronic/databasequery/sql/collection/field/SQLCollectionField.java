@@ -95,7 +95,7 @@ public class SQLCollectionField implements CollectionField {
 
     @Override
     public void setType(DataType dataType) {
-
+        throw new UnsupportedOperationException("Renaming fields is not supported yet");
     }
 
     @Override

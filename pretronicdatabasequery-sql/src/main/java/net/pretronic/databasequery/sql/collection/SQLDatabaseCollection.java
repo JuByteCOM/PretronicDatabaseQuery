@@ -182,7 +182,7 @@ public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabas
         return field;
     }
 
-    void invalidateFieldCache() {
+    public void invalidateFieldCache() {
         synchronized (fieldCacheLock) {
             fieldCache = null;
         }
