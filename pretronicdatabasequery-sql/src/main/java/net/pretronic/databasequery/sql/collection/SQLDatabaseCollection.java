@@ -182,6 +182,12 @@ public class SQLDatabaseCollection extends AbstractDatabaseCollection<SQLDatabas
         return field;
     }
 
+    void invalidateFieldCache() {
+        synchronized (fieldCacheLock) {
+            fieldCache = null;
+        }
+    }
+
     private void applyPreparedValues(PreparedStatement preparedStatement, AlterQueryContext context) throws SQLException {
         for (int i = 0; i < context.getPreparedValues().size(); i++) {
             preparedStatement.setObject(i + 1, context.getPreparedValues().get(i));

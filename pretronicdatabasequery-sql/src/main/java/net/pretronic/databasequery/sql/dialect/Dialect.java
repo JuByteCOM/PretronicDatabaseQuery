@@ -111,4 +111,8 @@ public interface Dialect extends ConnectionStringCreator {
     static void unregisterDialect(String dialectName) {
         Iterators.remove(DIALECTS, dialect -> dialect.getName().equalsIgnoreCase(dialectName));
     }
+
+    default String quoteIdentifier(String identifier) {
+        return identifier;
+    }
 }
