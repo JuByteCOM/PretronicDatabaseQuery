@@ -45,7 +45,7 @@ import java.sql.SQLException;
 
 /**
  * Represents the basic runtime information of a {@link CollectionField} that was created through the SQL collection API.
- * Editing operations are currently not supported and will result in an {@link UnsupportedOperationException}.
+ * Editing operations are currently supported for MySQL/MariaDB/H2 and PostgreSQL based dialects.
  */
 public class SQLCollectionField implements CollectionField {
 
@@ -166,8 +166,8 @@ public class SQLCollectionField implements CollectionField {
     @Override
     public void update() {
         Dialect dialect = getDialect();
-        if(!isMySqlLike(dialect)) {
-            throw new UnsupportedOperationException("Updating fields is currently only supported for MySQL compatible dialects");
+        if(!isMySqlLike(dialect) && !isPostgresLike(dialect)) {
+            throw new UnsupportedOperationException("Updating fields is currently only supported for MySQL or PostgreSQL compatible dialects");
         }
 
         String tableReference = buildCollectionReference(dialect);
@@ -195,6 +195,10 @@ public class SQLCollectionField implements CollectionField {
             dropPrimaryKey(tableReference);
         }
 
+        if(isPostgresLike(dialect) && removedOptions.contains(FieldOption.UNIQUE)) {
+            dropUniqueConstraint(tableReference, currentColumnName);
+        }
+
         if(!Objects.equals(originalName, name)) {
             renameColumn(tableReference, currentColumnName, name);
             currentColumnName = name;
@@ -214,6 +218,10 @@ public class SQLCollectionField implements CollectionField {
 
         if(addedOptions.contains(FieldOption.PRIMARY_KEY)) {
             addPrimaryKey(tableReference, currentColumnName);
+        }
+
+        if(isPostgresLike(dialect) && addedOptions.contains(FieldOption.UNIQUE)) {
+            addUniqueConstraint(tableReference, currentColumnName);
         }
 
         if(addedOptions.contains(FieldOption.UNIQUE_INDEX)) {
@@ -245,8 +253,8 @@ public class SQLCollectionField implements CollectionField {
     @Override
     public void remove() {
         Dialect dialect = getDialect();
-        if(!isMySqlLike(dialect)) {
-            throw new UnsupportedOperationException("Removing fields is currently only supported for MySQL compatible dialects");
+        if(!isMySqlLike(dialect) && !isPostgresLike(dialect)) {
+            throw new UnsupportedOperationException("Removing fields is currently only supported for MySQL or PostgreSQL compatible dialects");
         }
 
         String tableReference = buildCollectionReference(dialect);
@@ -259,6 +267,9 @@ public class SQLCollectionField implements CollectionField {
         }
         if(originalOptions.contains(FieldOption.INDEX)) {
             dropIndex(tableReference, originalName);
+        }
+        if(isPostgresLike(dialect) && originalOptions.contains(FieldOption.UNIQUE)) {
+            dropUniqueConstraint(tableReference, originalName);
         }
 
         String sql = "ALTER TABLE " + tableReference + " DROP COLUMN " + quoteIdentifier(dialect, originalName);
@@ -289,6 +300,11 @@ public class SQLCollectionField implements CollectionField {
         return dialectName.contains("mysql") || dialectName.contains("mariadb") || dialectName.contains("h2");
     }
 
+    private boolean isPostgresLike(Dialect dialect) {
+        String dialectName = dialect.getName().toLowerCase(Locale.ROOT);
+        return dialectName.contains("postgres");
+    }
+
     private String buildCollectionReference(Dialect dialect) {
         StringBuilder builder = new StringBuilder();
         if(dialect.getEnvironment() == DatabaseDriverEnvironment.REMOTE) {
@@ -317,13 +333,30 @@ public class SQLCollectionField implements CollectionField {
     private void applyColumnDefinition(String tableReference, String columnName) {
         Dialect dialect = getDialect();
         DataTypeInformation information = dialect.getDataTypeInformation(type);
+        List<Object> prepared = new ArrayList<>();
+        if(isPostgresLike(dialect)) {
+            List<String> clauses = new ArrayList<>();
+            String quotedColumn = quoteIdentifier(dialect, columnName);
+            clauses.add("ALTER COLUMN " + quotedColumn + " TYPE " + buildTypeDefinition(information));
+            if(options.contains(FieldOption.NOT_NULL)) {
+                clauses.add("ALTER COLUMN " + quotedColumn + " SET NOT NULL");
+            } else {
+                clauses.add("ALTER COLUMN " + quotedColumn + " DROP NOT NULL");
+            }
+            if(defaultValue != null) {
+                clauses.add("ALTER COLUMN " + quotedColumn + " SET DEFAULT ?");
+                prepared.add(defaultValue);
+            }
+            String sql = "ALTER TABLE " + tableReference + " " + String.join(", ", clauses);
+            executeUpdate(sql, prepared);
+            return;
+        }
+
         StringBuilder builder = new StringBuilder();
         builder.append("ALTER TABLE ").append(tableReference)
                 .append(" MODIFY COLUMN ")
                 .append(quoteIdentifier(dialect, columnName)).append(" ")
                 .append(buildTypeDefinition(information));
-
-        List<Object> prepared = new ArrayList<>();
 
         if(options.contains(FieldOption.NOT_NULL)) {
             builder.append(" NOT NULL");
@@ -370,20 +403,34 @@ public class SQLCollectionField implements CollectionField {
     }
 
     private void dropIndex(String tableReference, String columnName) {
+        Dialect dialect = getDialect();
         String indexName = buildIndexName(columnName);
-        String sql = "DROP INDEX " + quoteIdentifier(getDialect(), indexName) + " ON " + tableReference;
+        if(isPostgresLike(dialect)) {
+            String sql = "DROP INDEX IF EXISTS " + buildIndexReference(indexName);
+            executeUpdate(sql, Collections.emptyList());
+            return;
+        }
+        String sql = "DROP INDEX " + quoteIdentifier(dialect, indexName) + " ON " + tableReference;
         executeUpdate(sql, Collections.emptyList());
     }
 
     private void addIndex(String tableReference, String columnName, boolean unique) {
+        Dialect dialect = getDialect();
         String indexName = buildIndexName(columnName);
         StringBuilder builder = new StringBuilder("CREATE ");
         if(unique) {
             builder.append("UNIQUE ");
         }
-        builder.append("INDEX ").append(quoteIdentifier(getDialect(), indexName)).append(" ON ")
+        if(isPostgresLike(dialect)) {
+            builder.append("INDEX IF NOT EXISTS ").append(quoteIdentifier(dialect, indexName)).append(" ON ")
+                    .append(tableReference).append(" (")
+                    .append(quoteIdentifier(dialect, columnName)).append(")");
+            executeUpdate(builder.toString(), Collections.emptyList());
+            return;
+        }
+        builder.append("INDEX ").append(quoteIdentifier(dialect, indexName)).append(" ON ")
                 .append(tableReference).append(" (")
-                .append(quoteIdentifier(getDialect(), columnName)).append(")");
+                .append(quoteIdentifier(dialect, columnName)).append(")");
         executeUpdate(builder.toString(), Collections.emptyList());
     }
 
@@ -395,7 +442,26 @@ public class SQLCollectionField implements CollectionField {
         return indexName;
     }
 
+    private String buildIndexReference(String indexName) {
+        Dialect dialect = getDialect();
+        String quotedName = quoteIdentifier(dialect, indexName);
+        if(isPostgresLike(dialect) && dialect.getEnvironment() == DatabaseDriverEnvironment.REMOTE) {
+            return quoteIdentifier(dialect, collection.getDatabase().getName()) + "." + quotedName;
+        }
+        return quotedName;
+    }
+
     private void dropPrimaryKey(String tableReference) {
+        Dialect dialect = getDialect();
+        if(isPostgresLike(dialect)) {
+            String constraintName = findPrimaryKeyConstraint();
+            if(constraintName == null) {
+                return;
+            }
+            String sql = "ALTER TABLE " + tableReference + " DROP CONSTRAINT " + quoteIdentifier(dialect, constraintName);
+            executeUpdate(sql, Collections.emptyList());
+            return;
+        }
         String sql = "ALTER TABLE " + tableReference + " DROP PRIMARY KEY";
         executeUpdate(sql, Collections.emptyList());
     }
@@ -411,8 +477,41 @@ public class SQLCollectionField implements CollectionField {
         if(constraintName == null) {
             return;
         }
-        String sql = "ALTER TABLE " + tableReference + " DROP FOREIGN KEY "
-                + quoteIdentifier(getDialect(), constraintName);
+        Dialect dialect = getDialect();
+        String sql;
+        if(isPostgresLike(dialect)) {
+            sql = "ALTER TABLE " + tableReference + " DROP CONSTRAINT "
+                    + quoteIdentifier(dialect, constraintName);
+        } else {
+            sql = "ALTER TABLE " + tableReference + " DROP FOREIGN KEY "
+                    + quoteIdentifier(dialect, constraintName);
+        }
+        executeUpdate(sql, Collections.emptyList());
+    }
+
+    private void dropUniqueConstraint(String tableReference, String columnName) {
+        Dialect dialect = getDialect();
+        if(!isPostgresLike(dialect)) {
+            return;
+        }
+        String constraintName = findUniqueConstraintName(columnName);
+        if(constraintName == null) {
+            constraintName = buildUniqueConstraintName(columnName);
+        }
+        String sql = "ALTER TABLE " + tableReference + " DROP CONSTRAINT IF EXISTS "
+                + quoteIdentifier(dialect, constraintName);
+        executeUpdate(sql, Collections.emptyList());
+    }
+
+    private void addUniqueConstraint(String tableReference, String columnName) {
+        Dialect dialect = getDialect();
+        if(!isPostgresLike(dialect)) {
+            return;
+        }
+        String constraintName = buildUniqueConstraintName(columnName);
+        String sql = "ALTER TABLE " + tableReference + " ADD CONSTRAINT "
+                + quoteIdentifier(dialect, constraintName) + " UNIQUE ("
+                + quoteIdentifier(dialect, columnName) + ")";
         executeUpdate(sql, Collections.emptyList());
     }
 
@@ -449,6 +548,21 @@ public class SQLCollectionField implements CollectionField {
         return name;
     }
 
+    private String findPrimaryKeyConstraint() {
+        DataSource dataSource = collection.getDatabase().getDataSource();
+        try(Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            try(ResultSet resultSet = metaData.getPrimaryKeys(connection.getCatalog(), connection.getSchema(), collection.getName())) {
+                if(resultSet.next()) {
+                    return resultSet.getString("PK_NAME");
+                }
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseQueryException("Failed to resolve primary key metadata for collection " + collection.getName(), exception);
+        }
+        return null;
+    }
+
     private String findForeignKeyConstraint(String columnName) {
         DataSource dataSource = collection.getDatabase().getDataSource();
         try(Connection connection = dataSource.getConnection()) {
@@ -465,6 +579,32 @@ public class SQLCollectionField implements CollectionField {
             throw new DatabaseQueryException("Failed to resolve foreign key metadata for column " + columnName, exception);
         }
         return null;
+    }
+
+    private String findUniqueConstraintName(String columnName) {
+        DataSource dataSource = collection.getDatabase().getDataSource();
+        try(Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            try(ResultSet resultSet = metaData.getIndexInfo(connection.getCatalog(), connection.getSchema(), collection.getName(), true, true)) {
+                while (resultSet.next()) {
+                    String indexColumn = resultSet.getString("COLUMN_NAME");
+                    if(indexColumn != null && indexColumn.equalsIgnoreCase(columnName)) {
+                        return resultSet.getString("INDEX_NAME");
+                    }
+                }
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseQueryException("Failed to resolve unique constraint metadata for column " + columnName, exception);
+        }
+        return null;
+    }
+
+    private String buildUniqueConstraintName(String columnName) {
+        String name = collection.getName() + "_" + columnName + "_unique";
+        if(name.length() > 63) {
+            name = name.substring(0, 63);
+        }
+        return name;
     }
 
     private void executeUpdate(String sql, List<Object> parameters) {
