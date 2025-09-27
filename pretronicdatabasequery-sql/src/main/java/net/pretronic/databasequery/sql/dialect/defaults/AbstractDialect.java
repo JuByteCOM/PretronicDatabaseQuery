@@ -111,6 +111,14 @@ public abstract class AbstractDialect implements Dialect {
         return information;
     }
 
+    @Override
+    public String quoteIdentifier(String identifier) {
+        if(identifier == null) {
+            return null;
+        }
+        return firstBackTick + identifier + secondBackTick;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void loadDriver() {
