@@ -88,6 +88,8 @@ public interface CollectionField {
      */
     void setName(@NotNull String name);
 
+    void setType(@NotNull DataType dataType);
+
     /**
      * Sets the new size of this collection field. Be carefully by reducing of size. Some data may be deleted or an error occurred.
      * The {@code size} must be greater than 0.

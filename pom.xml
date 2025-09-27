@@ -48,14 +48,15 @@
     <repositories>
         <repository>
             <id>pretronic</id>
-            <url>https://repository.pretronic.net/repository/pretronic/</url>
+            <url>https://repo.jubyte.com/artifactory/pretronic/</url>
         </repository>
     </repositories>
 
     <distributionManagement>
         <repository>
             <id>pretronic</id>
-            <url>https://repository.pretronic.net/repository/pretronic/</url>
+            <name>Pretronic</name>
+            <url>https://repo.jubyte.com/artifactory/pretronic/</url>
         </repository>
     </distributionManagement>
 

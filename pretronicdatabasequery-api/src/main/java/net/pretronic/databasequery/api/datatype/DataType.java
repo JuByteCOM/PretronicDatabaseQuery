@@ -23,6 +23,7 @@ package net.pretronic.databasequery.api.datatype;
 import net.pretronic.databasequery.api.collection.DatabaseCollection;
 import net.pretronic.databasequery.api.query.type.CreateQuery;
 import net.pretronic.libraries.document.Document;
+import net.pretronic.libraries.utility.reflect.Primitives;
 
 import java.util.Date;
 
@@ -63,7 +64,7 @@ public enum DataType {
         return javaClasses;
     }
 
-    public static DataType getDataTypeByClass(Class<?> clazz) {
+    /*public static DataType getDataTypeByClass(Class<?> clazz) {
         if(clazz == null) return null;
 
         for (DataType dataType : DataType.values()) {
@@ -77,14 +78,14 @@ public enum DataType {
                 }
 
                 if(javaClass.isPrimitive()) {
-                    Class<?> wrapper = net.pretronic.libraries.utility.reflect.Primitives.getWrapper(javaClass);
+                    Class<?> wrapper = Primitives.getWrapper(javaClass);
                     if(wrapper != null && wrapper.equals(clazz)) return dataType;
                 } else if(clazz.isPrimitive()) {
-                    Class<?> wrapper = net.pretronic.libraries.utility.reflect.Primitives.getWrapper(clazz);
+                    Class<?> wrapper = Primitives.getWrapper(clazz);
                     if(wrapper != null && wrapper.equals(javaClass)) return dataType;
                 }
             }
         }
         return null;
-    }
+    }*/
 }

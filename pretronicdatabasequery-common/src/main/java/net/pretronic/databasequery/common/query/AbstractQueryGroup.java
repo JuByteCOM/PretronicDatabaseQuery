@@ -27,7 +27,7 @@ import java.util.List;
 
 public abstract class AbstractQueryGroup implements QueryGroup {
 
-    final List<Entry> entries;
+    public final List<Entry> entries;
 
     public AbstractQueryGroup() {
         this.entries = new ArrayList<>();
@@ -54,10 +54,10 @@ public abstract class AbstractQueryGroup implements QueryGroup {
         this.entries.clear();
     }
 
-    protected static class Entry {
+    public static class Entry {
 
-        final Query query;
-        final Object[] values;
+        public final Query query;
+        public final Object[] values;
 
         public Entry(Query query, Object[] values) {
             this.query = query;

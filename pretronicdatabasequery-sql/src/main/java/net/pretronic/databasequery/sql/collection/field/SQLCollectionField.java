@@ -67,6 +67,11 @@ public class SQLCollectionField implements CollectionField {
     }
 
     @Override
+    public void setType(DataType dataType) {
+
+    }
+
+    @Override
     public int getSize() {
         return size;
     }

@@ -39,6 +39,7 @@ import net.pretronic.databasequery.sql.collection.SQLDatabaseCollection;
 import net.pretronic.databasequery.sql.collection.SQLInnerQueryDatabaseCollection;
 import net.pretronic.databasequery.sql.dialect.Dialect;
 import net.pretronic.databasequery.sql.driver.SQLDatabaseDriver;
+import net.pretronic.databasequery.sql.query.CommitOnExecute;
 import net.pretronic.databasequery.sql.query.SQLQueryGroup;
 import net.pretronic.databasequery.sql.query.SQLQueryTransaction;
 import net.pretronic.databasequery.sql.query.type.SQLCreateQuery;
