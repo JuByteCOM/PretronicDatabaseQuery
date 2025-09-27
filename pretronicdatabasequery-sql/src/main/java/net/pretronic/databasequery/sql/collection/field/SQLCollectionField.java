@@ -50,7 +50,7 @@ import java.sql.SQLException;
 public class SQLCollectionField implements CollectionField {
 
     private final SQLDatabaseCollection collection;
-    private final DataType type;
+    private DataType type;
     private final EnumSet<FieldOption> options;
     private final EnumSet<FieldOption> originalOptions;
 
@@ -59,6 +59,7 @@ public class SQLCollectionField implements CollectionField {
     private Object defaultValue;
     private ForeignKey foreignKey;
 
+    private DataType originalType;
     private String originalName;
     private int originalSize;
     private Object originalDefaultValue;
@@ -77,6 +78,7 @@ public class SQLCollectionField implements CollectionField {
                 : EnumSet.copyOf(Arrays.asList(options));
         this.options = effectiveOptions;
         this.originalOptions = EnumSet.copyOf(effectiveOptions);
+        this.originalType = type;
         this.originalName = name;
         this.originalSize = size;
         this.originalDefaultValue = defaultValue;
@@ -95,7 +97,12 @@ public class SQLCollectionField implements CollectionField {
 
     @Override
     public void setType(DataType dataType) {
-        throw new UnsupportedOperationException("Renaming fields is not supported yet");
+        if(dataType == null) {
+            throw new IllegalArgumentException("Data type must not be null");
+        }
+        Dialect dialect = getDialect();
+        dialect.getDataTypeInformation(dataType);
+        this.type = dataType;
     }
 
     @Override
@@ -204,6 +211,7 @@ public class SQLCollectionField implements CollectionField {
             currentColumnName = name;
         }
 
+        boolean typeChanged = originalType != type;
         boolean defaultChanged = !Objects.equals(originalDefaultValue, defaultValue);
         boolean sizeChanged = originalSize != size;
         boolean definitionOptionChanged = affectsColumnDefinition(addedOptions, removedOptions);
@@ -212,7 +220,7 @@ public class SQLCollectionField implements CollectionField {
             dropDefaultValue(tableReference, currentColumnName);
         }
 
-        if(sizeChanged || defaultChanged || definitionOptionChanged) {
+        if(typeChanged || sizeChanged || defaultChanged || definitionOptionChanged) {
             applyColumnDefinition(tableReference, currentColumnName);
         }
 
@@ -236,6 +244,7 @@ public class SQLCollectionField implements CollectionField {
         }
 
         this.originalName = this.name;
+        this.originalType = this.type;
         this.originalSize = this.size;
         this.originalDefaultValue = this.defaultValue;
         this.originalForeignKey = this.foreignKey;
