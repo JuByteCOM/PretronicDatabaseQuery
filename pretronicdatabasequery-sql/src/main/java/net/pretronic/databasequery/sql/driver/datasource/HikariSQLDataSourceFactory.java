@@ -60,23 +60,40 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
             if(remoteConfig.getUsername() != null) hikariConfig.setUsername(remoteConfig.getUsername());
             if(remoteConfig.getPassword() != null) hikariConfig.setPassword(remoteConfig.getPassword());
         }
-        hikariConfig.addDataSourceProperty("useSSL", config.isUseSSL());
-        if((config.getDialect().equals(Dialect.MYSQL) || config.getDialect().equals(Dialect.MARIADB)) && config.isUseSSL()) {
-            // Java 8 installations often disable TLSv1/TLSv1.1. Explicitly selecting TLSv1.2 avoids
-            // SSL handshake errors with older JDBC drivers that do not automatically negotiate it.
-            hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
-            boolean trustServerCertificate = config.isTrustServerCertificate();
-            hikariConfig.addDataSourceProperty("trustServerCertificate", trustServerCertificate);
-            if(config.getDialect().equals(Dialect.MYSQL)) {
+        boolean isMySql = config.getDialect().equals(Dialect.MYSQL);
+        boolean isMariaDb = config.getDialect().equals(Dialect.MARIADB);
+
+        if(isMariaDb) {
+            // MariaDB Connector/J 3.x: use sslMode instead of deprecated useSSL property
+            String sslMode;
+            if(!config.isUseSSL()) {
+                sslMode = "disable";
+            } else if(config.isTrustServerCertificate()) {
+                sslMode = "trust";
+            } else {
+                sslMode = "verify-full";
+            }
+            hikariConfig.addDataSourceProperty("sslMode", sslMode);
+            // MariaDB Connector/J 3.x requires sslMode in the JDBC URL for reliable
+            // application; DataSource properties alone may not override the default.
+            String currentUrl = hikariConfig.getJdbcUrl();
+            if(currentUrl != null && !currentUrl.contains("sslMode")) {
+                String separator = currentUrl.contains("?") ? "&" : "?";
+                hikariConfig.setJdbcUrl(currentUrl + separator + "sslMode=" + sslMode);
+            }
+        } else {
+            hikariConfig.addDataSourceProperty("useSSL", config.isUseSSL());
+            if(isMySql && config.isUseSSL()) {
+                boolean trustServerCertificate = config.isTrustServerCertificate();
+                hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
+                hikariConfig.addDataSourceProperty("trustServerCertificate", trustServerCertificate);
                 hikariConfig.addDataSourceProperty("verifyServerCertificate", !trustServerCertificate);
-            } else if(config.getDialect().equals(Dialect.MARIADB) && trustServerCertificate) {
-                hikariConfig.addDataSourceProperty("sslMode", "trust");
-                // MariaDB Connector/J 3.x requires sslMode in the JDBC URL for reliable
-                // application; DataSource properties alone may not override the default.
+                // Append to JDBC URL for older MySQL 5.x drivers that ignore DataSource properties
                 String currentUrl = hikariConfig.getJdbcUrl();
-                if(currentUrl != null && !currentUrl.contains("sslMode")) {
+                if(currentUrl != null && !currentUrl.contains("enabledTLSProtocols")) {
                     String separator = currentUrl.contains("?") ? "&" : "?";
-                    hikariConfig.setJdbcUrl(currentUrl + separator + "sslMode=trust");
+                    hikariConfig.setJdbcUrl(currentUrl + separator
+                            + "enabledTLSProtocols=TLSv1.2&verifyServerCertificate=" + !trustServerCertificate);
                 }
             }
         }
@@ -86,14 +103,22 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
         hikariConfig.setReadOnly(config.isConnectionReadOnly());
         long connectionExpire = config.getDataSourceConnectionExpire();
         //@Todo custom max/min config options for every dialect
-        if((config.getDialect().equals(Dialect.MYSQL) || config.getDialect().equals(Dialect.MARIADB)) && connectionExpire > TimeUnit.MINUTES.toMillis(5)) {
+        if((isMySql || isMariaDb) && connectionExpire > TimeUnit.MINUTES.toMillis(5)) {
             connectionExpire = TimeUnit.MINUTES.toMillis(5);
         }
         if(connectionExpire != 0) {
             hikariConfig.setMaxLifetime(connectionExpire);
         }
 
-        if(config.getDataSourceConnectionExpireAfterAccess() != 0) hikariConfig.setIdleTimeout(config.getDataSourceConnectionExpireAfterAccess());
+        long idleTimeout = config.getDataSourceConnectionExpireAfterAccess();
+        if(idleTimeout != 0) {
+            // Ensure idleTimeout is less than maxLifetime to prevent HikariCP warnings
+            if(connectionExpire != 0 && idleTimeout >= connectionExpire) {
+                idleTimeout = connectionExpire - TimeUnit.SECONDS.toMillis(30);
+                if(idleTimeout <= 0) idleTimeout = TimeUnit.SECONDS.toMillis(10);
+            }
+            hikariConfig.setIdleTimeout(idleTimeout);
+        }
         if(config.getDataSourceConnectionLoginTimeout() != 0) hikariConfig.setConnectionTimeout(config.getDataSourceConnectionLoginTimeout());
         if(config.getDataSourceMaximumPoolSize() != 0) hikariConfig.setMaximumPoolSize(config.getDataSourceMaximumPoolSize());
         if(config.getDataSourceMinimumIdleConnectionPoolSize() != 0) hikariConfig.setMinimumIdle(config.getDataSourceMinimumIdleConnectionPoolSize());
