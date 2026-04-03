@@ -47,6 +47,9 @@ public abstract class SQLDatabaseDriverConfig<T extends SQLDatabaseDriverConfig<
     @DocumentKey("useSSL")
     protected final boolean useSSL;
 
+    @DocumentKey("trustServerCertificate")
+    protected final boolean trustServerCertificate;
+
     @DocumentKey("connection.options.catalog")
     protected final String connectionCatalog;
 
@@ -88,11 +91,12 @@ public abstract class SQLDatabaseDriverConfig<T extends SQLDatabaseDriverConfig<
     @DocumentKey("datasource.minimumIdleConnectionPoolSize")
     protected int dataSourceMinimumIdleConnectionPoolSize;
 
-    protected SQLDatabaseDriverConfig(String name, Dialect dialect, String connectionString, boolean useSSL, String connectionCatalog, String connectionSchema, boolean connectionReadOnly, int connectionIsolationLevel, int connectionNetworkTimeout, String dataSourceClassName, long dataSourceConnectionExpireAfterAccess, long dataSourceConnectionExpire, long dataSourceConnectionLoginTimeout, int dataSourceMaximumPoolSize, int dataSourceMinimumIdleConnectionPoolSize) {
+    protected SQLDatabaseDriverConfig(String name, Dialect dialect, String connectionString, boolean useSSL, boolean trustServerCertificate, String connectionCatalog, String connectionSchema, boolean connectionReadOnly, int connectionIsolationLevel, int connectionNetworkTimeout, String dataSourceClassName, long dataSourceConnectionExpireAfterAccess, long dataSourceConnectionExpire, long dataSourceConnectionLoginTimeout, int dataSourceMaximumPoolSize, int dataSourceMinimumIdleConnectionPoolSize) {
         this.name = name;
         this.dialect = dialect;
         this.connectionString = connectionString;
         this.useSSL = useSSL;
+        this.trustServerCertificate = trustServerCertificate;
         this.connectionCatalog = connectionCatalog;
         this.connectionSchema = connectionSchema;
         this.connectionReadOnly = connectionReadOnly;
@@ -132,6 +136,10 @@ public abstract class SQLDatabaseDriverConfig<T extends SQLDatabaseDriverConfig<
 
     public boolean isUseSSL() {
         return useSSL;
+    }
+
+    public boolean isTrustServerCertificate() {
+        return trustServerCertificate;
     }
 
     public String getConnectionCatalog() {

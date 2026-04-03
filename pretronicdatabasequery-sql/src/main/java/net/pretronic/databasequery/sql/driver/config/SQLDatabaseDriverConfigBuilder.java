@@ -35,6 +35,7 @@ public class SQLDatabaseDriverConfigBuilder {
     private Dialect dialect;
     private String connectionString;
     private boolean useSSL;
+    private boolean trustServerCertificate;
     private String connectionCatalog;
     private String connectionSchema;
     private boolean connectionReadOnly;
@@ -87,6 +88,11 @@ public class SQLDatabaseDriverConfigBuilder {
 
     public SQLDatabaseDriverConfigBuilder setUseSSL(boolean useSSL) {
         this.useSSL = useSSL;
+        return this;
+    }
+
+    public SQLDatabaseDriverConfigBuilder setTrustServerCertificate(boolean trustServerCertificate) {
+        this.trustServerCertificate = trustServerCertificate;
         return this;
     }
 
@@ -168,7 +174,7 @@ public class SQLDatabaseDriverConfigBuilder {
     public SQLDatabaseDriverConfig<?> build() {
         Validate.notNull(dialect);
         if(dialect.getEnvironment() == DatabaseDriverEnvironment.LOCAL) {
-            return new SQLLocalDatabaseDriverConfig(name, dialect, connectionString, useSSL, connectionCatalog, connectionSchema,
+            return new SQLLocalDatabaseDriverConfig(name, dialect, connectionString, useSSL, trustServerCertificate, connectionCatalog, connectionSchema,
                     connectionReadOnly, connectionIsolationLevel, connectionNetworkTimeout, dataSourceClassName,
                     dataSourceConnectionExpireAfterAccess, dataSourceConnectionExpire, dataSourceConnectionLoginTimeout,
                     dataSourceMaximumPoolSize, dataSourceMinimumIdleConnectionPoolSize, location);
@@ -177,7 +183,7 @@ public class SQLDatabaseDriverConfigBuilder {
             if(connectionString == null && address == null) {
                 throw new IllegalArgumentException("ConnectionString and Address are null. Specify one of them.");
             }
-            return new SQLRemoteDatabaseDriverConfig(name, dialect, connectionString, useSSL, connectionCatalog, connectionSchema,
+            return new SQLRemoteDatabaseDriverConfig(name, dialect, connectionString, useSSL, trustServerCertificate, connectionCatalog, connectionSchema,
                     connectionReadOnly, connectionIsolationLevel, connectionNetworkTimeout, dataSourceClassName,
                     dataSourceConnectionExpireAfterAccess, dataSourceConnectionExpire, dataSourceConnectionLoginTimeout,
                     dataSourceMaximumPoolSize, dataSourceMinimumIdleConnectionPoolSize, address, username, password);
