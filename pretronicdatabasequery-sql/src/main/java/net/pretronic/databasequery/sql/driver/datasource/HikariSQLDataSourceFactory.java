@@ -65,6 +65,7 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
             // Java 8 installations often disable TLSv1/TLSv1.1. Explicitly selecting TLSv1.2 avoids
             // SSL handshake errors with older JDBC drivers that do not automatically negotiate it.
             hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
+            hikariConfig.addDataSourceProperty("trustServerCertificate", config.isTrustServerCertificate());
         }
         if(config.getConnectionCatalog() != null) hikariConfig.setCatalog(config.getConnectionCatalog());
         if(config.getConnectionSchema() != null) hikariConfig.setSchema(config.getConnectionSchema());
