@@ -61,6 +61,11 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
             if(remoteConfig.getPassword() != null) hikariConfig.setPassword(remoteConfig.getPassword());
         }
         hikariConfig.addDataSourceProperty("useSSL", config.isUseSSL());
+        if((config.getDialect().equals(Dialect.MYSQL) || config.getDialect().equals(Dialect.MARIADB)) && config.isUseSSL()) {
+            // Java 8 installations often disable TLSv1/TLSv1.1. Explicitly selecting TLSv1.2 avoids
+            // SSL handshake errors with older JDBC drivers that do not automatically negotiate it.
+            hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
+        }
         if(config.getConnectionCatalog() != null) hikariConfig.setCatalog(config.getConnectionCatalog());
         if(config.getConnectionSchema() != null) hikariConfig.setSchema(config.getConnectionSchema());
         hikariConfig.setAutoCommit(false);
