@@ -139,7 +139,7 @@ public abstract class SQLDatabaseDriverConfig<T extends SQLDatabaseDriverConfig<
     }
 
     public boolean isTrustServerCertificate() {
-        return trustServerCertificate;
+        return this.trustServerCertificate || (this.useSSL && this.dialect.equals(Dialect.MARIADB));
     }
 
     public String getConnectionCatalog() {
