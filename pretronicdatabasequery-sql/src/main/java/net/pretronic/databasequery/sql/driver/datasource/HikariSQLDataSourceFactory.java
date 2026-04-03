@@ -71,6 +71,13 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
                 hikariConfig.addDataSourceProperty("verifyServerCertificate", !trustServerCertificate);
             } else if(config.getDialect().equals(Dialect.MARIADB) && trustServerCertificate) {
                 hikariConfig.addDataSourceProperty("sslMode", "trust");
+                // MariaDB Connector/J 3.x requires sslMode in the JDBC URL for reliable
+                // application; DataSource properties alone may not override the default.
+                String currentUrl = hikariConfig.getJdbcUrl();
+                if(currentUrl != null && !currentUrl.contains("sslMode")) {
+                    String separator = currentUrl.contains("?") ? "&" : "?";
+                    hikariConfig.setJdbcUrl(currentUrl + separator + "sslMode=trust");
+                }
             }
         }
         if(config.getConnectionCatalog() != null) hikariConfig.setCatalog(config.getConnectionCatalog());
