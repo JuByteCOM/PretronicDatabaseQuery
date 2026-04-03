@@ -139,10 +139,6 @@ public abstract class SQLDatabaseDriverConfig<T extends SQLDatabaseDriverConfig<
     }
 
     public boolean isTrustServerCertificate() {
-        // Keep compatibility with existing MariaDB SSL configurations that do not
-        // explicitly set "trustServerCertificate". For MariaDB, SSL mode defaults
-        // to certificate verification and would otherwise fail with PKIX errors
-        // on self-managed certificates.
         return this.trustServerCertificate || (this.useSSL && this.dialect.equals(Dialect.MARIADB));
     }
 
