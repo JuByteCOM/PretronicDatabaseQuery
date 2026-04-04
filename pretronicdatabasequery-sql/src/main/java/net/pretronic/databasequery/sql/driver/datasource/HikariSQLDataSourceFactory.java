@@ -63,58 +63,60 @@ public class HikariSQLDataSourceFactory implements SQLDataSourceFactory {
         boolean isMySql = config.getDialect().equals(Dialect.MYSQL);
         boolean isMariaDb = config.getDialect().equals(Dialect.MARIADB);
 
-        // Compute the MariaDB sslMode value for use in both dialect branches.
-        // This is needed because MariaDB Connector/J 3.x can also handle jdbc:mysql:// URLs
-        // in plugin classloader environments, but it only understands sslMode (not useSSL).
-        String mariaDbSslMode;
-        if(!config.isUseSSL()) {
-            mariaDbSslMode = "disable";
-        } else if(config.isTrustServerCertificate()) {
-            mariaDbSslMode = "trust";
-        } else {
-            mariaDbSslMode = "verify-full";
-        }
+        if("1.8".equals(System.getProperty("java.specification.version"))) {
+            // Compute the MariaDB sslMode value for use in both dialect branches.
+            // This is needed because MariaDB Connector/J 3.x can also handle jdbc:mysql:// URLs
+            // in plugin classloader environments, but it only understands sslMode (not useSSL).
+            String mariaDbSslMode;
+            if(!config.isUseSSL()) {
+                mariaDbSslMode = "disable";
+            } else if(config.isTrustServerCertificate()) {
+                mariaDbSslMode = "trust";
+            } else {
+                mariaDbSslMode = "verify-full";
+            }
 
-        if(isMariaDb) {
-            // MariaDB Connector/J 3.x: use sslMode instead of deprecated useSSL property
-            hikariConfig.addDataSourceProperty("sslMode", mariaDbSslMode);
-        } else {
-            hikariConfig.addDataSourceProperty("useSSL", config.isUseSSL());
-            if(isMySql && config.isUseSSL()) {
-                boolean trustServerCertificate = config.isTrustServerCertificate();
-                hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
-                hikariConfig.addDataSourceProperty("trustServerCertificate", trustServerCertificate);
-                hikariConfig.addDataSourceProperty("verifyServerCertificate", !trustServerCertificate);
-                // Append to JDBC URL for older MySQL 5.x drivers that ignore DataSource properties
-                String currentUrl = hikariConfig.getJdbcUrl();
-                if(currentUrl != null && !currentUrl.contains("enabledTLSProtocols")) {
-                    String separator = currentUrl.contains("?") ? "&" : "?";
-                    hikariConfig.setJdbcUrl(currentUrl + separator
-                            + "enabledTLSProtocols=TLSv1.2&verifyServerCertificate=" + !trustServerCertificate);
+            if(isMariaDb) {
+                // MariaDB Connector/J 3.x: use sslMode instead of deprecated useSSL property
+                hikariConfig.addDataSourceProperty("sslMode", mariaDbSslMode);
+            } else {
+                hikariConfig.addDataSourceProperty("useSSL", config.isUseSSL());
+                if(isMySql && config.isUseSSL()) {
+                    boolean trustServerCertificate = config.isTrustServerCertificate();
+                    hikariConfig.addDataSourceProperty("enabledTLSProtocols", "TLSv1.2");
+                    hikariConfig.addDataSourceProperty("trustServerCertificate", trustServerCertificate);
+                    hikariConfig.addDataSourceProperty("verifyServerCertificate", !trustServerCertificate);
+                    // Append to JDBC URL for older MySQL 5.x drivers that ignore DataSource properties
+                    String currentUrl = hikariConfig.getJdbcUrl();
+                    if(currentUrl != null && !currentUrl.contains("enabledTLSProtocols")) {
+                        String separator = currentUrl.contains("?") ? "&" : "?";
+                        hikariConfig.setJdbcUrl(currentUrl + separator
+                                + "enabledTLSProtocols=TLSv1.2&verifyServerCertificate=" + !trustServerCertificate);
+                    }
                 }
             }
-        }
 
-        // Always append sslMode to the JDBC URL for MariaDB Connector/J compatibility.
-        // MariaDB Connector/J 3.x can handle both jdbc:mariadb:// and jdbc:mysql:// URLs
-        // in plugin classloader environments, but ignores MySQL-style useSSL properties.
-        // Without an explicit sslMode in the URL the driver falls back to its internal
-        // default, which can trigger PKIX certificate validation errors on Java 8.
-        {
-            String currentUrl = hikariConfig.getJdbcUrl();
-            if(currentUrl != null && !currentUrl.contains("sslMode")) {
-                String separator = currentUrl.contains("?") ? "&" : "?";
-                hikariConfig.setJdbcUrl(currentUrl + separator + "sslMode=" + mariaDbSslMode);
+            // Always append sslMode to the JDBC URL for MariaDB Connector/J compatibility.
+            // MariaDB Connector/J 3.x can handle both jdbc:mariadb:// and jdbc:mysql:// URLs
+            // in plugin classloader environments, but ignores MySQL-style useSSL properties.
+            // Without an explicit sslMode in the URL the driver falls back to its internal
+            // default, which can trigger PKIX certificate validation errors on Java 8.
+            {
+                String currentUrl = hikariConfig.getJdbcUrl();
+                if(currentUrl != null && !currentUrl.contains("sslMode")) {
+                    String separator = currentUrl.contains("?") ? "&" : "?";
+                    hikariConfig.setJdbcUrl(currentUrl + separator + "sslMode=" + mariaDbSslMode);
+                }
             }
-        }
 
-        // When SSL is enabled, restrict protocol to TLSv1.2 for Java 8 compatibility.
-        // Java 8 does not support TLS 1.3 and may fail the SSL handshake without this.
-        if((isMariaDb || isMySql) && config.isUseSSL()) {
-            String currentUrl = hikariConfig.getJdbcUrl();
-            if(currentUrl != null && !currentUrl.contains("enabledSslProtocolSuites")) {
-                String separator = currentUrl.contains("?") ? "&" : "?";
-                hikariConfig.setJdbcUrl(currentUrl + separator + "enabledSslProtocolSuites=TLSv1.2");
+            // When SSL is enabled, restrict protocol to TLSv1.2 for Java 8 compatibility.
+            // Java 8 does not support TLS 1.3 and may fail the SSL handshake without this.
+            if((isMariaDb || isMySql) && config.isUseSSL()) {
+                String currentUrl = hikariConfig.getJdbcUrl();
+                if(currentUrl != null && !currentUrl.contains("enabledSslProtocolSuites")) {
+                    String separator = currentUrl.contains("?") ? "&" : "?";
+                    hikariConfig.setJdbcUrl(currentUrl + separator + "enabledSslProtocolSuites=TLSv1.2");
+                }
             }
         }
         if(config.getConnectionCatalog() != null) hikariConfig.setCatalog(config.getConnectionCatalog());
